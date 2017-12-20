@@ -108,9 +108,10 @@ public class ServerMainTest {
     URL js = new File("target/plugins/javascript.jar").getAbsoluteFile().toURI().toURL();
     URL php = new File("target/plugins/php.jar").getAbsoluteFile().toURI().toURL();
     URL py = new File("target/plugins/python.jar").getAbsoluteFile().toURI().toURL();
+    URL ts = new File("target/plugins/typescript.jar").getAbsoluteFile().toURI().toURL();
 
     try {
-      ServerMain.main("" + port, js.toString(), php.toString(), py.toString());
+      ServerMain.main("" + port, js.toString(), php.toString(), py.toString(), ts.toString());
     } catch (Exception e) {
       e.printStackTrace();
       future.get(1, TimeUnit.SECONDS);
@@ -239,6 +240,20 @@ public class ServerMainTest {
       .extracting("range.start.line", "range.start.character", "range.end.line", "range.end.character", "code", "source", "message", "severity")
       .containsExactly(tuple(1, 2, 1, 15, "javascript:S1442", "sonarlint", "Remove this usage of alert(...). (javascript:S1442)", DiagnosticSeverity.Information));
   }
+
+  @Test
+  public void analyzeSimpleTsFileOnChange() throws Exception {
+    String uri = getUri("foo.ts");
+    VersionedTextDocumentIdentifier docId = new VersionedTextDocumentIdentifier(1);
+    docId.setUri(uri);
+    lsProxy.getTextDocumentService()
+      .didChange(new DidChangeTextDocumentParams(docId, Collections.singletonList(new TextDocumentContentChangeEvent("function foo() {\n  if(1 && 1) {}\n}"))));
+
+    assertThat(waitForDiagnostics(uri))
+      .extracting("range.start.line", "range.start.character", "range.end.line", "range.end.character", "code", "source", "message", "severity")
+      .containsExactly(tuple(1, 2, 1, 15, "javascript:S1442", "sonarlint", "Remove this usage of alert(...). (javascript:S1442)", DiagnosticSeverity.Information));
+  }
+
 
   @Test
   public void cleanDiagnosticsOnClose() throws Exception {

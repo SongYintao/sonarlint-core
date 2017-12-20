@@ -93,6 +93,7 @@ import org.eclipse.lsp4j.services.LanguageClient;
 import org.eclipse.lsp4j.services.LanguageServer;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
+import org.sonarlint.languageserver.contextful.ContextualAnalyzer;
 import org.sonarsource.sonarlint.core.StandaloneSonarLintEngineImpl;
 import org.sonarsource.sonarlint.core.client.api.common.RuleDetails;
 import org.sonarsource.sonarlint.core.client.api.common.analysis.AnalysisResults;
@@ -120,6 +121,7 @@ public class SonarLintLanguageServer implements LanguageServer, WorkspaceService
 
   private final Map<URI, String> languageIdPerFileURI = new HashMap<>();
   private final SonarLintTelemetry telemetry = new SonarLintTelemetry();
+  private final ContextualAnalyzer liveAnalyzer = new ContextualAnalyzer();
 
   private UserSettings userSettings = new UserSettings();
 
@@ -389,6 +391,19 @@ public class SonarLintLanguageServer implements LanguageServer, WorkspaceService
   }
 
   private void analyze(URI uri, String content) {
+    // TODO extract this block to a separate method
+    {
+      List<Diagnostic> diagnostics = new ArrayList<>();
+      liveAnalyzer.analyze(uri, content, this::error).forEach(issue -> {
+        convert(issue).ifPresent(diagnostics::add);
+      });
+      if (!diagnostics.isEmpty()) {
+        PublishDiagnosticsParams diagnosticsParams = newPublishDiagnostics(uri);
+        diagnosticsParams.setDiagnostics(diagnostics);
+        client.publishDiagnostics(diagnosticsParams);
+      }
+    }
+
     Map<URI, PublishDiagnosticsParams> files = new HashMap<>();
     files.put(uri, newPublishDiagnostics(uri));
     Path baseDir = workspaceDir != null ? workspaceDir : Paths.get(uri).getParent();
