@@ -247,7 +247,7 @@ public class ServerMainTest {
     VersionedTextDocumentIdentifier docId = new VersionedTextDocumentIdentifier(1);
     docId.setUri(uri);
     lsProxy.getTextDocumentService()
-      .didChange(new DidChangeTextDocumentParams(docId, Collections.singletonList(new TextDocumentContentChangeEvent("function foo() {\n  if(1 && 1) {}\n}"))));
+      .didChange(new DidChangeTextDocumentParams(docId, Collections.singletonList(new TextDocumentContentChangeEvent("function foo() {\n if(1 && 1) {}\n}"))));
 
     assertThat(waitForDiagnostics(uri))
       .extracting("range.start.line", "range.start.character", "range.end.line", "range.end.character", "code", "source", "message", "severity")

@@ -54,6 +54,9 @@ public class ContextualAnalyzer {
   }
 
   private List<Issue> toIssues(AnalysisResponse response, URI uri, String content) {
+    if (response == null) {
+      return Collections.emptyList();
+    }
     return Arrays.stream(response.issues).map(failure -> new SimpleIssue(failure.failure, failure.startPosition.line, failure.startPosition.character, new DefaultClientInputFile(uri, content, null, null))).collect(Collectors.toList());
   }
 

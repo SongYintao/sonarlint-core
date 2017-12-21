@@ -391,20 +391,7 @@ public class SonarLintLanguageServer implements LanguageServer, WorkspaceService
   }
 
   private void analyze(URI uri, String content) {
-    // TODO extract this block to a separate method
-    {
-      List<Diagnostic> diagnostics = new ArrayList<>();
-      liveAnalyzer.analyze(uri, content, this::error).forEach(issue -> {
-        convert(issue).ifPresent(diagnostics::add);
-      });
-      if (!diagnostics.isEmpty()) {
-        PublishDiagnosticsParams diagnosticsParams = newPublishDiagnostics(uri);
-        diagnosticsParams.setDiagnostics(diagnostics);
-        client.publishDiagnostics(diagnosticsParams);
-      }
-    }
-
-    Map<URI, PublishDiagnosticsParams> files = new HashMap<>();
+   Map<URI, PublishDiagnosticsParams> files = new HashMap<>();
     files.put(uri, newPublishDiagnostics(uri));
     Path baseDir = workspaceDir != null ? workspaceDir : Paths.get(uri).getParent();
     Objects.requireNonNull(baseDir);
@@ -428,6 +415,20 @@ public class SonarLintLanguageServer implements LanguageServer, WorkspaceService
     // Ignore files with parsing error
     analysisResults.failedAnalysisFiles().stream().map(ClientInputFile::getClientObject).forEach(files::remove);
     files.values().forEach(client::publishDiagnostics);
+
+    contextualAnalyzeAndPublish(uri, content);
+  }
+
+  private void contextualAnalyzeAndPublish(URI uri, String content) {
+    List<Diagnostic> diagnostics = new ArrayList<>();
+    liveAnalyzer.analyze(uri, content, this::error).forEach(issue -> {
+      convert(issue).ifPresent(diagnostics::add);
+    });
+    if (!diagnostics.isEmpty()) {
+      PublishDiagnosticsParams diagnosticsParams = newPublishDiagnostics(uri);
+      diagnosticsParams.setDiagnostics(diagnostics);
+      client.publishDiagnostics(diagnosticsParams);
+    }
   }
 
   static Optional<Diagnostic> convert(Issue issue) {
